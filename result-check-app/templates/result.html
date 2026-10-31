@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Result for Roll {{ roll_number }} | ResultCheck</title>
+  <meta name="description" content="Exam result for roll number {{ roll_number }} — {{ student.name }}"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"/>
+</head>
+<body>
+  <div class="bg-orb orb-1"></div>
+  <div class="bg-orb orb-2"></div>
+  <div class="bg-orb orb-3"></div>
+
+  <nav class="navbar">
+    <div class="nav-inner">
+      <div class="nav-brand">
+        <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+          <path d="M2 17l10 5 10-5"/>
+          <path d="M2 12l10 5 10-5"/>
+        </svg>
+        <span>ResultCheck</span>
+      </div>
+      <a href="/" class="back-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M19 12H5M12 5l-7 7 7 7"/>
+        </svg>
+        Check Another
+      </a>
+    </div>
+  </nav>
+
+  <main class="main-container">
+    <div class="result-header">
+      <div class="result-avatar">
+        {{ student.name[0].upper() }}
+      </div>
+      <div class="result-identity">
+        <div class="result-roll-badge">Roll No. {{ roll_number }}</div>
+        <h1 class="result-name">{{ student.name }}</h1>
+        <div class="result-status-pill {% if student.status == 'Pass' %}status-pass{% else %}status-fail{% endif %}">
+          {% if student.status == 'Pass' %}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          {% else %}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+          {% endif %}
+          {{ student.status }}
+        </div>
+      </div>
+    </div>
+
+    <div class="result-grid">
+      <!-- Marks Card -->
+      <div class="result-card marks-card">
+        <div class="result-card-label">Total Marks</div>
+        <div class="result-card-value marks-value">
+          <span class="marks-number">{{ student.marks }}</span>
+          <span class="marks-total">/100</span>
+        </div>
+        <div class="marks-bar-container">
+          <div class="marks-bar" style="width: {{ student.marks }}%"></div>
+        </div>
+        <div class="marks-percent">{{ student.marks }}%</div>
+      </div>
+
+      <!-- Grade Card -->
+      <div class="result-card grade-card">
+        <div class="result-card-label">Grade</div>
+        <div class="result-card-value grade-value grade-{{ student.grade | replace('+','plus') }}">
+          {{ student.grade }}
+        </div>
+        <div class="grade-desc">{{ grade_label }}</div>
+      </div>
+
+      <!-- Status Card -->
+      <div class="result-card status-card {% if student.status == 'Pass' %}status-card-pass{% else %}status-card-fail{% endif %}">
+        <div class="result-card-label">Result</div>
+        <div class="result-card-value status-value">
+          {% if student.status == 'Pass' %}🎉{% else %}📚{% endif %}
+        </div>
+        <div class="status-desc">
+          {% if student.status == 'Pass' %}
+            Congratulations! You have passed.
+          {% else %}
+            Better luck next time. Keep studying!
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Detailed breakdown -->
+    <div class="card breakdown-card">
+      <h2 class="section-title">Score Breakdown</h2>
+      <div class="breakdown-table">
+        <div class="breakdown-row">
+          <span class="breakdown-label">Student Name</span>
+          <span class="breakdown-value">{{ student.name }}</span>
+        </div>
+        <div class="breakdown-row">
+          <span class="breakdown-label">Roll Number</span>
+          <span class="breakdown-value">{{ roll_number }}</span>
+        </div>
+        <div class="breakdown-row">
+          <span class="breakdown-label">Marks Obtained</span>
+          <span class="breakdown-value">{{ student.marks }} / 100</span>
+        </div>
+        <div class="breakdown-row">
+          <span class="breakdown-label">Percentage</span>
+          <span class="breakdown-value">{{ student.marks }}%</span>
+        </div>
+        <div class="breakdown-row">
+          <span class="breakdown-label">Grade</span>
+          <span class="breakdown-value">{{ student.grade }} — {{ grade_label }}</span>
+        </div>
+        <div class="breakdown-row">
+          <span class="breakdown-label">Final Status</span>
+          <span class="breakdown-value {% if student.status == 'Pass' %}text-green{% else %}text-red{% endif %}">
+            <strong>{{ student.status }}</strong>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div class="action-buttons">
+      <a href="/" class="btn-secondary" id="check-another-btn">Check Another Result</a>
+      <button onclick="window.print()" class="btn-outline" id="print-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="6 9 6 2 18 2 18 9"/>
+          <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+          <rect x="6" y="14" width="12" height="8"/>
+        </svg>
+        Print Result
+      </button>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <p>ResultCheck &copy; 2026 &mdash; Deployed via GitHub Actions &amp; Docker</p>
+  </footer>
+
+  <script>
+    // Animate the marks bar on load
+    window.addEventListener('load', function() {
+      const bar = document.querySelector('.marks-bar');
+      if (bar) {
+        bar.style.transition = 'width 1.2s cubic-bezier(0.4, 0, 0.2, 1)';
+        const finalWidth = bar.style.width;
+        bar.style.width = '0%';
+        setTimeout(() => { bar.style.width = finalWidth; }, 100);
+      }
+      // Animate cards in
+      const cards = document.querySelectorAll('.result-card');
+      cards.forEach((card, i) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        setTimeout(() => {
+          card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+          card.style.opacity = '1';
+          card.style.transform = 'translateY(0)';
+        }, 200 + i * 150);
+      });
+    });
+  </script>
+</body>
+</html>

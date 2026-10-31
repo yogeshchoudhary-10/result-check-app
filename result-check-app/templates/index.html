@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Student Result Portal | Result-Check</title>
+  <meta name="description" content="Enter your roll number to instantly check your exam results. Secure and fast student result portal."/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"/>
+</head>
+<body>
+  <div class="bg-orb orb-1"></div>
+  <div class="bg-orb orb-2"></div>
+  <div class="bg-orb orb-3"></div>
+
+  <nav class="navbar">
+    <div class="nav-inner">
+      <div class="nav-brand">
+        <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+          <path d="M2 17l10 5 10-5"/>
+          <path d="M2 12l10 5 10-5"/>
+        </svg>
+        <span>ResultCheck</span>
+      </div>
+      <div class="nav-badge">Academic Portal</div>
+    </div>
+  </nav>
+
+  <main class="main-container">
+    <div class="hero-section">
+      <div class="hero-badge">
+        <span class="badge-dot"></span>
+        <span>Live Results Available</span>
+      </div>
+      <h1 class="hero-title">Check Your<br/><span class="gradient-text">Exam Results</span></h1>
+      <p class="hero-subtitle">Enter your roll number below to instantly view your marks, grade, and result status.</p>
+    </div>
+
+    <div class="card form-card">
+      <div class="card-header">
+        <div class="card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="M21 21l-4.35-4.35"/>
+          </svg>
+        </div>
+        <div>
+          <h2 class="card-title">Result Lookup</h2>
+          <p class="card-subtitle">Enter your 3-digit roll number</p>
+        </div>
+      </div>
+
+      {% if error %}
+      <div class="alert alert-error" role="alert">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="alert-icon">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <span>{{ error }}</span>
+      </div>
+      {% endif %}
+
+      <form action="/result" method="POST" id="result-form" class="result-form">
+        <div class="input-group">
+          <label for="roll_number" class="input-label">Roll Number</label>
+          <div class="input-wrapper">
+            <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+            <input
+              type="text"
+              id="roll_number"
+              name="roll_number"
+              class="input-field"
+              placeholder="e.g. 101"
+              value="{{ searched or '' }}"
+              autocomplete="off"
+              maxlength="10"
+              required
+            />
+          </div>
+          <p class="input-hint">Valid roll numbers: 101 – 110</p>
+        </div>
+
+        <button type="submit" class="btn-primary" id="submit-btn">
+          <span class="btn-text">View Result</span>
+          <svg class="btn-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </button>
+      </form>
+    </div>
+
+    <div class="info-cards">
+      <div class="info-card">
+        <div class="info-icon info-icon-blue">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 12l2 2 4-4"/>
+            <path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"/>
+          </svg>
+        </div>
+        <h3>Instant Results</h3>
+        <p>Get your marks and grade in seconds</p>
+      </div>
+      <div class="info-card">
+        <div class="info-icon info-icon-purple">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+        </div>
+        <h3>Secure & Private</h3>
+        <p>Your data is protected with end-to-end security</p>
+      </div>
+      <div class="info-card">
+        <div class="info-icon info-icon-green">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+          </svg>
+        </div>
+        <h3>CI/CD Powered</h3>
+        <p>Auto-deployed via GitHub Actions pipeline</p>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <p>ResultCheck &copy; 2026 &mdash; Deployed via GitHub Actions &amp; Docker</p>
+  </footer>
+
+  <script>
+    // Animate form on submit
+    document.getElementById('result-form').addEventListener('submit', function() {
+      const btn = document.getElementById('submit-btn');
+      btn.classList.add('loading');
+      btn.querySelector('.btn-text').textContent = 'Searching...';
+    });
+
+    // Auto-focus input
+    document.getElementById('roll_number').focus();
+  </script>
+</body>
+</html>

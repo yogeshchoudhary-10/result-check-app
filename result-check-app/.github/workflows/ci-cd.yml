@@ -1,0 +1,209 @@
+# ============================================================
+# .github/workflows/ci-cd.yml
+# GitHub Actions CI/CD Pipeline — Result-Check Web App
+#
+# Pipeline Stages:
+#   1. test          → Run pytest unit tests
+#   2. build-image   → Build Docker image (only if tests pass)
+#   3. push-to-hub   → Push image to Docker Hub (only if build passes)
+#   4. deploy        → Pull & run container (only if push passes)
+#
+# Required GitHub Secrets:
+#   DOCKER_USERNAME  — Your Docker Hub username
+#   DOCKER_PASSWORD  — Your Docker Hub access token (not plain password)
+# ============================================================
+
+name: CI/CD Pipeline — Result-Check App
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+# Global environment variables
+env:
+  IMAGE_NAME: result-check-app
+  CONTAINER_NAME: result-check-container
+  PORT: 5000
+
+jobs:
+
+  # ============================================================
+  # STAGE 1: TEST
+  # Run all unit tests. If ANY test fails, the entire pipeline
+  # stops here — build and push never happen.
+  # ============================================================
+  test:
+    name: "Stage 1 — Run Unit Tests"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: "📥 Checkout source code"
+        uses: actions/checkout@v4
+
+      - name: "🐍 Set up Python 3.11"
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # Cache pip packages to speed up future runs (~30s saved)
+      - name: "💾 Cache pip dependencies"
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: "📦 Install dependencies"
+        run: pip install -r requirements.txt
+
+      - name: "🧪 Run unit tests with pytest (verbose + coverage)"
+        run: |
+          pytest tests/test_results.py -v \
+            --tb=short \
+            --cov=. \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage.xml
+
+      - name: "📊 Upload coverage report"
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage.xml
+
+  # ============================================================
+  # STAGE 2: BUILD IMAGE
+  # Build the Docker image. Runs ONLY if the test stage passed.
+  # Uses Docker BuildKit cache to speed up repeated builds.
+  # ============================================================
+  build-image:
+    name: "Stage 2 — Build Docker Image"
+    runs-on: ubuntu-latest
+    needs: test          # ← Depends on test; won't run if test fails
+
+    steps:
+      - name: "📥 Checkout source code"
+        uses: actions/checkout@v4
+
+      - name: "🐋 Set up Docker Buildx (for layer caching)"
+        uses: docker/setup-buildx-action@v3
+
+      - name: "🔨 Build Docker image"
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false           # Don't push yet — just verify it builds
+          tags: ${{ env.IMAGE_NAME }}:latest
+          cache-from: type=gha  # GitHub Actions cache for Docker layers
+          cache-to:   type=gha,mode=max
+
+      - name: "✅ Verify image was built"
+        run: |
+          echo "Build complete. Image: $IMAGE_NAME:latest"
+          echo "This stage only runs because Stage 1 (tests) PASSED."
+
+  # ============================================================
+  # STAGE 3: PUSH TO DOCKER HUB
+  # Login to Docker Hub and push the image. Runs ONLY if build passed.
+  # ============================================================
+  push-to-hub:
+    name: "Stage 3 — Push to Docker Hub"
+    runs-on: ubuntu-latest
+    needs: build-image   # ← Depends on build; won't run if build fails
+    # Only push on pushes to main/master, not on pull requests
+    if: github.event_name == 'push'
+
+    steps:
+      - name: "📥 Checkout source code"
+        uses: actions/checkout@v4
+
+      - name: "🐋 Set up Docker Buildx"
+        uses: docker/setup-buildx-action@v3
+
+      - name: "🔐 Login to Docker Hub"
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: "🚀 Build and Push image to Docker Hub"
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest
+            ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to:   type=gha,mode=max
+
+      - name: "📋 Log image details"
+        run: |
+          echo "✅ Image pushed:"
+          echo "  → ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest"
+          echo "  → ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+
+  # ============================================================
+  # STAGE 4: DEPLOY
+  # Pull the latest image and run a Docker container.
+  # Runs ONLY after push-to-hub succeeds.
+  #
+  # For local runner:  register your machine as self-hosted runner
+  # For cloud:         adapt to Render, Railway, or Fly.io deploy hooks
+  #
+  # NOTE: This stage uses a self-hosted runner.
+  # To use GitHub-hosted runners, change to: runs-on: ubuntu-latest
+  # and update the deploy steps to use a cloud service webhook.
+  # ============================================================
+  deploy:
+    name: "Stage 4 — Deploy Container"
+    runs-on: ubuntu-latest
+    needs: push-to-hub   # ← Depends on push; won't run if push fails
+    if: github.event_name == 'push'
+
+    # Manual approval gate (optional — uncomment to require a human to approve)
+    # environment:
+    #   name: production
+    #   url: http://localhost:5000
+
+    steps:
+      - name: "🛑 Stop old container (if running)"
+        run: |
+          docker stop ${{ env.CONTAINER_NAME }} 2>/dev/null || echo "No running container to stop"
+          docker rm   ${{ env.CONTAINER_NAME }} 2>/dev/null || echo "No container to remove"
+
+      - name: "⬇️ Pull latest image from Docker Hub"
+        run: |
+          docker pull ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest
+
+      - name: "▶️ Run new container"
+        run: |
+          docker run -d \
+            --name ${{ env.CONTAINER_NAME }} \
+            --restart unless-stopped \
+            -p ${{ env.PORT }}:5000 \
+            ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest
+
+      - name: "⏳ Wait for container to be healthy"
+        run: |
+          echo "Waiting 10 seconds for the app to start..."
+          sleep 10
+
+      - name: "🏥 Health check — verify app is running"
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:${{ env.PORT }}/health || echo "000")
+          echo "Health check HTTP status: $STATUS"
+          if [ "$STATUS" = "200" ]; then
+            echo "✅ Deployment successful! App is healthy."
+          else
+            echo "❌ Health check failed with status $STATUS"
+            docker logs ${{ env.CONTAINER_NAME }}
+            exit 1
+          fi
+
+      - name: "📋 Log running containers"
+        if: always()
+        run: docker ps -a --filter "name=${{ env.CONTAINER_NAME }}"
